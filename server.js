@@ -3,6 +3,10 @@ import multer from 'multer';
 import { Groq } from 'groq-sdk';
 import fs from 'fs';
 import path from 'path';
+import axios from 'axios';
+// Add your Memory AI API details
+const MEMORY_AI_API_URL = 'https://api.mymemory.translated.net/get';
+const MEMORY_AI_API_KEY = 'c15293f3f31fa940fcf2'; // If you have one
 
 const app = express();
 
@@ -57,25 +61,35 @@ app.post('/transcribe', upload.single('audio'), async (req, res) => {
   }
 });
 
+// Add your DeepL API key
+const DEEPL_API_KEY = 'YOUR_DEEPL_API_KEY';
+
+// Initialize the Google Cloud Translation client
+
+
 async function translateToEnglish(gujaratiText) {
   try {
-    const completion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: "You are a translator. Translate the given Gujarati text to English, removing stop words (is, am, are, in) and special characters. Provide only the cleaned translation."
-        },
-        {
-          role: "user",
-          content: `Translate the following Gujarati text to English, removing stop words and special characters: "${gujaratiText}"`
-        }
-      ],
-      model: "llama3-70b-8192",
-      temperature: 0.5,
-      max_tokens: 1024,
+    const response = await axios.get(MEMORY_AI_API_URL, {
+      params: {
+        q: gujaratiText,
+        langpair: 'gu|en',
+        key: MEMORY_AI_API_KEY, // Include this if you have an API key
+        mt: 1, // Enable machine translation
+        // Add other parameters as needed
+      }
     });
 
-    return completion.choices[0].message.content;
+    const translation = response.data.responseData.translatedText;
+
+    // Remove stop words and special characters
+    const cleanedTranslation = translation
+      .toLowerCase()
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, '')
+      .split(' ')
+      .filter(word => !['is', 'am', 'are', 'in'].includes(word))
+      .join(' ');
+
+    return cleanedTranslation;
   } catch (error) {
     console.error('Translation error:', error);
     throw error;
